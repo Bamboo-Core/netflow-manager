@@ -73,4 +73,4 @@ RUN chmod +x ./start.sh
 # Variável de ambiente padrão para o banco de dados (recomenda-se sobrescrever no Easypanel)
 ENV DATABASE_URL="file:/dev.db"
 
-CMD ["./start.sh"]
+CMD ["sh", "./start.sh"]
