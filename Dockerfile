@@ -6,8 +6,10 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Instalar dependências do Node.js
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+ENV DATABASE_URL="file:/tmp/dev.db"
+
 RUN npm ci
 
 # 2. Build da aplicação
