@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Host {
+  id            String       @id @default(uuid())
+  name          String
+  ipAddress     String       @unique
+  vendor        String       // Cisco, Huawei, Juniper, MikroTik, etc.
+  model         String?
+  hostType      String       // border_router, core_switch, distribution_switch, etc.
+  flowProtocol  String       // netflow_v5, netflow_v9, ipfix, netstream, sflow
+  collectorPort Int          @default(9995)
+  description   String?
+  enabled       Boolean      @default(true)
+  collecting    Boolean      @default(false)
+  nfcapdPid     Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  flowRecords   FlowRecord[]
+
+  @@map("hosts")
+}
+
+model FlowRecord {
+  id        String   @id @default(uuid())
+  hostId    String
+  host      Host     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  timestamp DateTime
+  srcAddr   String
+  dstAddr   String
+  srcPort   Int
+  dstPort   Int
+  protocol  String   // TCP, UDP, ICMP, etc.
+  bytes     BigInt
+  packets   BigInt
+  flows     Int      @default(1)
+  inputIf   Int?
+  outputIf  Int?
+  createdAt DateTime @default(now())
+
+  @@index([hostId])
+  @@index([timestamp])
+  @@index([srcAddr])
+  @@index([dstAddr])
+  @@map("flow_records")
+}
