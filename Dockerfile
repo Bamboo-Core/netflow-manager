@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-ENV DATABASE_URL="file:/tmp/dev.db"
+ENV DATABASE_URL="file:/dev.db"
 
 RUN npm ci
 
@@ -71,6 +71,6 @@ COPY --chown=nextjs:nodejs start.sh ./start.sh
 RUN chmod +x ./start.sh
 
 # Variável de ambiente padrão para o banco de dados (recomenda-se sobrescrever no Easypanel)
-ENV DATABASE_URL="file:/app/data/netflow.db"
+ENV DATABASE_URL="file:/dev.db"
 
 CMD ["./start.sh"]
