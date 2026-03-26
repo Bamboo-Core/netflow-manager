@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 COPY prisma ./prisma
 
 # Install dependencies without running postinstall (no DB needed at this stage)
-ENV DATABASE_URL="file:./placeholder.db"
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN npm ci --ignore-scripts && npm cache clean --force
 
 # Generate Prisma Client (needs schema but not a real DB connection)
@@ -22,7 +22,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL="file:./placeholder.db"
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
 RUN npm run build
 
@@ -35,11 +35,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# SQLite database path - mount /app/data as persistent volume in EasyPanel
-ENV DATABASE_URL="file:/app/data/netflow.db"
+# PostgreSQL connection - set via EasyPanel environment variables
+# Example: postgresql://postgres:password@flow-test-db:5432/flow-test-db
+ENV DATABASE_URL=""
 
 # Install runtime dependencies
-RUN apk add --no-cache openssl sqlite
+RUN apk add --no-cache openssl
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -60,8 +61,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --chown=nextjs:nodejs start.sh ./start.sh
 RUN chmod +x start.sh
 
-# Create data directory for SQLite persistence
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 USER nextjs
 

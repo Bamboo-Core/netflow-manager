@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
 
   if (hostId) where.hostId = hostId;
-  if (srcAddr) where.srcAddr = { contains: srcAddr };
-  if (dstAddr) where.dstAddr = { contains: dstAddr };
+  if (srcAddr) where.srcAddr = { contains: srcAddr, mode: "insensitive" };
+  if (dstAddr) where.dstAddr = { contains: dstAddr, mode: "insensitive" };
   if (protocol) where.protocol = protocol;
 
   if (startDate || endDate) {
