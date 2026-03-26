@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 ENV DATABASE_URL="file:./dev.db"
-RUN npm ci
+RUN npm ci --ignore-scripts && npm cache clean --force
 
 # 2. Builder
 FROM base AS builder
@@ -16,7 +16,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-
 
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
@@ -32,6 +31,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# Final path for the SQLite database
 ENV DATABASE_URL="file:/app/data/dev.db"
 
 RUN apk add --no-cache openssl sqlite
@@ -43,12 +43,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Missing start.sh copy
+COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
 
 # Cria a pasta do banco e garante permissão para o usuário 'nextjs'
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data && chmod +x start.sh
 
 USER nextjs
 EXPOSE 3000
-
 
 CMD ["sh", "start.sh"]
