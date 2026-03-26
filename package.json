@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate && prisma db push --skip-generate",
-    "prisma:setup": "prisma generate && prisma db push"
+    "postinstall": "test -f .env || echo 'DATABASE_URL=\"file:./dev.db\"' > .env; prisma generate && prisma db push --skip-generate",
+    "prisma:setup": "test -f .env || echo 'DATABASE_URL=\"file:./dev.db\"' > .env; prisma generate && prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
