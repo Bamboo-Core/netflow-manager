@@ -51,4 +51,4 @@ USER nextjs
 EXPOSE 3000
 
 
-CMD npx prisma db push && node server.js
+CMD ["sh", "start.sh"]
