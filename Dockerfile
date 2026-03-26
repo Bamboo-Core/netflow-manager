@@ -14,8 +14,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN npx prisma generate
 RUN npm run build
+RUN npx prisma migrate dev --name init
 
 FROM base AS runner
 WORKDIR /app
