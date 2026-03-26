@@ -1,55 +1,73 @@
-FROM node:20-alpine AS base
-
-# 1. Dependências
-FROM base AS deps
+# ---- Stage 1: Dependencies ----
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
+
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-ENV DATABASE_URL="file:./dev.db"
+
+# Install dependencies without running postinstall (no DB needed at this stage)
+ENV DATABASE_URL="file:./placeholder.db"
 RUN npm ci --ignore-scripts && npm cache clean --force
 
-# 2. Builder
-FROM base AS builder
+# Generate Prisma Client (needs schema but not a real DB connection)
+RUN npx prisma generate
+
+# ---- Stage 2: Builder ----
+FROM node:20-alpine AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="file:./placeholder.db"
 
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
-
-RUN npx prisma generate
 RUN npm run build
 
-# 3. Runner
-FROM base AS runner
+# ---- Stage 3: Runner (Production) ----
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-# Final path for the SQLite database
-ENV DATABASE_URL="file:/app/data/dev.db"
 
+# SQLite database path - mount /app/data as persistent volume in EasyPanel
+ENV DATABASE_URL="file:/app/data/netflow.db"
+
+# Install runtime dependencies
 RUN apk add --no-cache openssl sqlite
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
 
-# Copia os arquivos necessários do standalone do Next.js
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone build output from builder
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-# Missing start.sh copy
-COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
 
-# Cria a pasta do banco e garante permissão para o usuário 'nextjs'
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data && chmod +x start.sh
+# Copy Prisma schema + client for runtime db push
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+
+# Copy startup script
+COPY --chown=nextjs:nodejs start.sh ./start.sh
+RUN chmod +x start.sh
+
+# Create data directory for SQLite persistence
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 USER nextjs
+
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 CMD ["sh", "start.sh"]
