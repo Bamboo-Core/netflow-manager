@@ -1,18 +1,23 @@
 #!/bin/sh
 set -e
 
-echo "Starting netflow-manager Next.js container..."
-echo "Current directory: $(pwd)"
+echo "=== NetFlow Manager - Iniciando ==="
+echo "Diretorio: $(pwd)"
+echo "DATABASE_URL: ${DATABASE_URL}"
 
-echo "Sincronizando banco de dados através do Prisma..."
+# Sincronizar banco de dados (criar tabelas se necessario)
+echo "Sincronizando banco de dados..."
 if [ -f "./prisma/schema.prisma" ]; then
-    echo "Executando 'prisma db push' para garantir as tabelas..."
-    npx --yes prisma db push --schema=./prisma/schema.prisma --accept-data-loss || echo "Aviso: Nao foi possivel sincronizar o banco via Prisma."
+    node ./node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || {
+        echo "Erro: Falha ao sincronizar banco de dados."
+    }
+    echo "Banco de dados sincronizado com sucesso."
 else
-    echo "Erro: Arquivo ./prisma/schema.prisma nao encontrado!"
+    echo "Erro: prisma/schema.prisma nao encontrado!"
 fi
 
-echo "Iniciando servidor Next.js..."
+# Iniciar servidor Next.js
+echo "Iniciando servidor Next.js na porta ${PORT:-3000}..."
 if [ -f "server.js" ]; then
     exec node server.js
 else
