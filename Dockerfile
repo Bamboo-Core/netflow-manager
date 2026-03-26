@@ -36,4 +36,4 @@ COPY --chown=nextjs:nodejs start.sh ./start.sh
 RUN chmod +x ./start.sh
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "./start.sh"]
+CMD ["node", "server.js"]
