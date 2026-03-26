@@ -8,10 +8,9 @@ echo "DATABASE_URL: ${DATABASE_URL}"
 # Sincronizar banco de dados (criar tabelas se necessario)
 echo "Sincronizando banco de dados..."
 if [ -f "./prisma/schema.prisma" ]; then
-    node ./node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || {
+    node ./node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 && \
+        echo "Banco de dados sincronizado com sucesso." || \
         echo "Erro: Falha ao sincronizar banco de dados."
-    }
-    echo "Banco de dados sincronizado com sucesso."
 else
     echo "Erro: prisma/schema.prisma nao encontrado!"
 fi
