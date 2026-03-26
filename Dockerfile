@@ -39,12 +39,19 @@ ENV HOSTNAME="0.0.0.0"
 # Example: postgresql://postgres:password@flow-test-db:5432/flow-test-db
 ENV DATABASE_URL=""
 
-# Install runtime dependencies
-RUN apk add --no-cache openssl
+# Diretorio de dados do nfcapd (pode ser sobrescrito via env)
+ENV NFCAPD_DATA_DIR="/var/lib/nfcapd-data"
+
+# Install runtime dependencies: openssl para Prisma, nfdump para coleta NetFlow
+RUN apk add --no-cache openssl nfdump
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+  adduser --system --uid 1001 nextjs
+
+# Criar e dar permissao ao diretorio de dados do nfcapd
+RUN mkdir -p /var/lib/nfcapd-data && \
+  chown -R nextjs:nodejs /var/lib/nfcapd-data
 
 # Copy standalone build output from builder
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -64,7 +71,12 @@ RUN chmod +x start.sh
 
 USER nextjs
 
+# Porta HTTP do Next.js
 EXPOSE 3000
+
+# Porta UDP padrao do NetFlow/nfcapd (pode variar por host)
+# O EasyPanel deve expor esta porta como UDP no servico
+EXPOSE 9995/udp
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
