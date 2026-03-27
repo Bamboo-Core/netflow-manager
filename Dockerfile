@@ -24,6 +24,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
+# Re-gera o Prisma Client com os binaryTargets atualizados (inclui debian-openssl-3.0.x)
+RUN npx prisma generate
+
 RUN npm run build
 
 # ---- Stage 3: Runner (Production) ----
@@ -46,7 +49,7 @@ ENV NFCAPD_DATA_DIR="/var/lib/nfcapd-data"
 
 # Install runtime dependencies: openssl para Prisma, nfdump para coleta NetFlow
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends openssl nfdump && \
+  apt-get install -y --no-install-recommends openssl nfdump wget && \
   rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (Debian usa addgroup/adduser do pacote shadow-utils)
@@ -91,7 +94,7 @@ EXPOSE 10003/udp
 EXPOSE 10004/udp
 EXPOSE 10005/udp
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 CMD ["sh", "start.sh"]
