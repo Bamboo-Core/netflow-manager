@@ -27,7 +27,9 @@ ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholde
 RUN npm run build
 
 # ---- Stage 3: Runner (Production) ----
-FROM node:20-alpine AS runner
+# Usa node:20-slim (Debian) porque nfdump nao existe no repositorio Alpine (apk).
+# Apenas o runner precisa de Debian; os stages de build continuam em Alpine.
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -43,11 +45,13 @@ ENV DATABASE_URL=""
 ENV NFCAPD_DATA_DIR="/var/lib/nfcapd-data"
 
 # Install runtime dependencies: openssl para Prisma, nfdump para coleta NetFlow
-RUN apk add --no-cache openssl nfdump
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends openssl nfdump && \
+  rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-  adduser --system --uid 1001 nextjs
+# Create non-root user (Debian usa addgroup/adduser do pacote shadow-utils)
+RUN groupadd --system --gid 1001 nodejs && \
+  useradd --system --uid 1001 --gid nodejs nextjs
 
 # Criar e dar permissao ao diretorio de dados do nfcapd
 RUN mkdir -p /var/lib/nfcapd-data && \
@@ -74,9 +78,18 @@ USER nextjs
 # Porta HTTP do Next.js
 EXPOSE 3000
 
-# Porta UDP padrao do NetFlow/nfcapd (pode variar por host)
-# O EasyPanel deve expor esta porta como UDP no servico
+# Range de portas UDP para NetFlow/nfcapd - uma por host cadastrado.
 EXPOSE 9995/udp
+EXPOSE 9996/udp
+EXPOSE 9997/udp
+EXPOSE 9998/udp
+EXPOSE 9999/udp
+EXPOSE 10000/udp
+EXPOSE 10001/udp
+EXPOSE 10002/udp
+EXPOSE 10003/udp
+EXPOSE 10004/udp
+EXPOSE 10005/udp
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
